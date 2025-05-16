@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { SafeAreaView, StyleSheet } from 'react-native';
+import { SafeAreaView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import ChatWindow from './components/ChatWindow';
+import ChatWindow from '../components/ChatWindow';
 
 interface Message {
   id: string;
@@ -35,22 +35,40 @@ const ChatScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ChatWindow
-        messages={messages}
-        onSendMessage={handleSendMessage}
-        otherUserName={name as string}
-        otherUserAvatar='https://i.pravatar.cc/150?img=1' // Placeholder avatar
-      />
-    </SafeAreaView>
+    <View style={styles.modalContainer}>
+      <View style={styles.handle} />
+      <SafeAreaView style={styles.container}>
+        <ChatWindow
+          messages={messages}
+          onSendMessage={handleSendMessage}
+          otherUserName={name as string}
+          otherUserAvatar='https://i.pravatar.cc/150?img=1'
+        />
+      </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    overflow: 'hidden',
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    backgroundColor: '#DDD',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 8,
+    marginBottom: 4,
+  },
   container: {
     flex: 1,
     backgroundColor: '#F5F5F5',
-    paddingTop: 20,
   },
 });
 

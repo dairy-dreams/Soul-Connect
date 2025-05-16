@@ -6,23 +6,35 @@ const RootLayout = () => {
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: "white" },
-        animation: "slide_from_right",
-        animationDuration: 300,
-        presentation: "modal",
-        headerStyle: {
-          backgroundColor: "white",
-        },
-        headerTintColor: "black",
-        headerTitleStyle: {
-          fontWeight: "bold",
-        },
-      }} 
+      }}
+      initialRouteName="(auth)"
     >
-      <Stack.Screen name="index" />
-      <Stack.Screen name="LoginScreen" />
-      <Stack.Screen name="UsersChatList" />
-      <Stack.Screen name="ChatScreen" />
+      <Stack.Screen 
+        name="(auth)"
+        options={{
+          headerShown: false,
+          gestureEnabled: false,
+          animation: 'none'
+        }}
+      />
+      <Stack.Screen 
+        name="(app)"
+        options={{
+          headerShown: false,
+          gestureEnabled: false,
+          animation: 'fade'
+        }}
+      />
+      <Stack.Screen 
+        name="ChatScreen"
+        options={{
+          animation: 'slide_from_bottom',
+          presentation: 'modal',
+          gestureEnabled: true,
+          gestureDirection: 'vertical',
+          fullScreenGestureEnabled: true,
+        }}
+      />
     </Stack>
   );
 };

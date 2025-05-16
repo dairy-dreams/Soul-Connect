@@ -1,6 +1,6 @@
 import UserListHeader from "@/components/UserListHeader";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   FlatList,
   Image,
@@ -9,29 +9,64 @@ import {
   Pressable,
   View
 } from "react-native";
-
-const users = [
-  { id: "1", name: "John Doe", avatar: "https://i.pravatar.cc/150?img=1" },
-  { id: "2", name: "Alice Smith", avatar: "https://i.pravatar.cc/150?img=2" },
-  { id: "3", name: "Michael Johnson", avatar: "https://i.pravatar.cc/150?img=3" },
-  { id: "4", name: "Emily Davis", avatar: "https://i.pravatar.cc/150?img=4" },
-];
+import { collection, getDocs } from "firebase/firestore";
+import { auth, db } from "../firebase.client";
 
 const UserListScreen = () => {
   const router = useRouter();
+  const [users, setUsers] = useState<any[]>([]);
   const [query, setQuery] = useState("");
   const [searchVisible, setSearchVisible] = useState(false);
 
-  const filteredUsers = users.filter((user) =>
-    user.name.toLowerCase().includes(query.toLowerCase())
-  );
+  // Get the current logged-in user
+  const currentUser = auth.currentUser;
+
+  const getAllUsersExcept = async () => {
+    try {
+      const usersRef = collection(db, "users");
+      const snapshot = await getDocs(usersRef);
+      const fetchedUsers = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      // Filter out the current user by uid or phoneNumber
+      let filteredUsers = fetchedUsers;
+      if (currentUser) {
+        if (currentUser.uid) {
+          filteredUsers = fetchedUsers.filter(
+            (user) => user.id !== currentUser.uid
+          );
+        } else if (currentUser.phoneNumber) {
+          filteredUsers = fetchedUsers.filter(
+            (user) => user.phoneNumber !== currentUser.phoneNumber
+          );
+        }
+      }
+
+      setUsers(filteredUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      setUsers([]);
+    }
+  };
 
   const handleUserPress = (userId: string, name: string) => {
     router.push({
       pathname: "/ChatScreen",
-      params: { userId, name }
+      params: { userId, name },
+      modal: true
     });
   };
+
+  useEffect(() => {
+    getAllUsersExcept();
+  }, []);
+
+  // Filter users by search query
+  const displayedUsers = users.filter((user) =>
+    user.name?.toLowerCase().includes(query.toLowerCase())
+  );
 
   return (
     <View style={styles.container}>
@@ -45,7 +80,7 @@ const UserListScreen = () => {
 
       {/* List */}
       <FlatList
-        data={filteredUsers}
+        data={displayedUsers}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingVertical: 10 }}
         renderItem={({ item }) => (
@@ -57,7 +92,7 @@ const UserListScreen = () => {
               pressed && styles.pressed
             ]}
           >
-            <Image source={{ uri: item.avatar }} style={styles.avatar} />
+            <Image source={{ uri: item.avatar || "https://i.pravatar.cc/150" }} style={styles.avatar} />
             <Text style={styles.name}>{item.name}</Text>
           </Pressable>
         )}

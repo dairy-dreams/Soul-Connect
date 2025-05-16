@@ -40,25 +40,24 @@ function ChatWindow({
   const flatListRef = useRef<FlatList>(null);
 
   const renderMessage = ({ item }: { item: Message }) => (
-      <Pressable
-      onLongPress={() =>
-        console.log("Long Pressed", item.text)
-      }
-        style={({ pressed }) => [
-          styles.messageBubble,
-          item.sender === "user" ? styles.userMessage : styles.otherMessage,
-            pressed && { opacity: 0.5 },
+    <Pressable
+      onLongPress={() => console.log("Long Pressed", item.text)}
+      style={({ pressed }) => [
+        styles.messageBubble,
+        item.sender === "user" ? styles.userMessage : styles.otherMessage,
+        pressed && { opacity: 0.5 },
+      ]}
+    >
+      <Text
+        style={[
+          item.sender === "user"
+            ? styles.messageText
+            : styles.otherMessageText,
         ]}
       >
-        <Text
-          style={[
-            item.sender === "user"
-              ? styles.messageText
-              : styles.otherMessageText,
-          ]}
-        >
-          {item.text}
-        </Text>
+        {item.text}
+      </Text>
+      <View style={styles.messageFooter}>
         <Text
           style={
             item.sender === "user" ? styles.timestamp : styles.otherTimestamp
@@ -66,8 +65,19 @@ function ChatWindow({
         >
           {item.timestamp}
         </Text>
-      </Pressable>
-
+        {item.sender === "user" && (
+          <View style={styles.tickContainer}>
+            <Ionicons name="checkmark" size={12} color="#999" />
+            <Ionicons
+              name="checkmark"
+              size={12}
+              color="#999"
+              style={styles.secondTick}
+            />
+          </View>
+        )}
+      </View>
+    </Pressable>
   );
 
   const handleSend = () => {
@@ -84,7 +94,7 @@ function ChatWindow({
     >
       <ChatHeader name={otherUserName} avatar={otherUserAvatar} />
       <ImageBackground
-        source={require("../../assets/images/chat-bg-light.png")}
+        source={require("../assets/images/chat-bg-light.png")}
         style={styles.backgroundImage}
       >
         <FlatList
@@ -142,14 +152,6 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 20,
     marginVertical: 4,
-    // shadowColor: '#000',
-    // shadowOffset: {
-    //   width: 0,
-    //   height: 1,
-    // },
-    // shadowOpacity: 0.18,
-    // shadowRadius: 1.0,
-    // elevation: 1,
   },
   userMessage: {
     alignSelf: "flex-end",
@@ -167,17 +169,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
   },
+  messageFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    marginTop: 4,
+  },
+  tickContainer: {
+    flexDirection: "row",
+    marginLeft: 4,
+  },
+  secondTick: {
+    marginLeft: -8,
+  },
   timestamp: {
     fontSize: 10,
     color: "#999",
-    marginTop: 4,
-    alignSelf: "flex-end",
   },
   otherTimestamp: {
     color: "#FFF",
     fontSize: 10,
-    marginTop: 4,
-    alignSelf: "flex-end",
   },
   inputContainer: {
     flexDirection: "row",

@@ -1,4 +1,5 @@
 import GenderSelection from "@/components/GenderSelection";
+import BlinkingHeart from "@/components/BlinkingHeart";
 import {
   BUTTON_COLOR,
   BUTTON_TEXT_COLOR,
@@ -12,7 +13,7 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import { Formik } from "formik";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Alert,
   Dimensions,
@@ -33,17 +34,23 @@ import OTPTextInput from "react-native-otp-textinput";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Yup from "yup";
 import { useRouter } from "expo-router";
+import { auth, db } from "../firebase.client";
+import { signInWithPhoneNumber, RecaptchaVerifier, ConfirmationResult } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+import { FirebaseRecaptchaVerifierModal } from 'expo-firebase-recaptcha';
 
 function TabBarIcon({
   name,
   color,
   library,
   size = 20,
+  styles = {},
 }: {
   name: string;
   color: string;
   library: "Ionicons" | "MaterialIcons" | "FontAwesome" | "AntDesign";
   size?: number;
+  styles?: object;
 }) {
   const IconComponent =
     library === "Ionicons"
@@ -54,7 +61,7 @@ function TabBarIcon({
       ? FontAwesome
       : AntDesign;
 
-  return <IconComponent name={name as any} size={size} color={color} />;
+  return <IconComponent name={name as any} size={size} color={color} styles={styles} />;
 }
 
 const validationSchema = Yup.object().shape({
@@ -72,29 +79,62 @@ const LoginScreen = () => {
   const [otp, setOtp] = useState("");
   const [countryCode, setCountryCode] = useState("IN");
   const [callingCode, setCallingCode] = useState("91");
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const recaptchaVerifier = useRef<FirebaseRecaptchaVerifierModal>(null);
+
   const router = useRouter();
 
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
     if (step === 1) {
       if (!phoneNumber || phoneNumber.length < 10) {
-        Alert.alert(
-          "Invalid Input",
-          "Please enter a valid phone number",
-          [{ text: "OK" }]
-        );
+        Alert.alert("Invalid Input", "Please enter a valid phone number");
         return;
       }
-      setStep(2);
+      try {
+        const formattedNumber = `+${callingCode}${phoneNumber}`;
+        console.log("Sending OTP to:", formattedNumber);
+        
+        const result = await signInWithPhoneNumber(
+          auth,
+          formattedNumber,
+          recaptchaVerifier.current
+        );
+        setConfirmationResult(result);
+        setStep(2);
+      } catch (error: any) {
+        console.error("Phone auth error:", error);
+        Alert.alert("Error", "Failed to send verification code. Please try again.");
+      }
     } else if (step === 2) {
       if (!otp || otp.length !== 6) {
-        Alert.alert(
-          "Invalid OTP",
-          "Please enter a valid 6-digit OTP",
-          [{ text: "OK" }]
-        );
+        Alert.alert("Invalid OTP", "Please enter a valid 6-digit OTP");
         return;
       }
-      setStep(3);
+      try {
+        if (!confirmationResult) {
+          throw new Error("No confirmation result available");
+        }
+        
+        console.log("Confirming OTP:", otp);
+        await confirmationResult.confirm(otp)
+          .then(() => {
+            console.log("OTP confirmed successfully");
+            setStep(3);
+          })
+          .catch((error) => {
+            console.error("OTP confirmation error:", error);
+            // Handle storage error specifically
+            if (error.message.includes("setItem")) {
+              Alert.alert("Error", "Storage access error. Please check app permissions.");
+            } else {
+              Alert.alert("Error", "Invalid OTP. Please try again.");
+            }
+            throw error;
+          });
+      } catch (error: any) {
+        console.error("OTP verification failed:", error);
+        // Don't show another alert here since we already showed one in the catch block above
+      }
     }
   };
 
@@ -103,19 +143,44 @@ const LoginScreen = () => {
     else if (step === 3) setStep(2);
   };
 
+  const handleSubmitProfile = async (values: any) => {
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error("No authenticated user found");
+
+      await setDoc(doc(db, "users", user.uid), {
+        name: values.name,
+        age: Number(values.age),
+        gender: values.gender,
+        phoneNumber: `+${callingCode}${phoneNumber}`,
+        createdAt: new Date().toISOString(),
+      });
+
+      router.push("/UsersChatList");
+    } catch (error: any) {
+      Alert.alert("Error", error.message);
+    }
+  };
+
   const imageSource =
     step === 1
       ? require("../assets/images/login.png")
       : step === 2
       ? require("../assets/images/otp-verification.png")
-      : require("../assets/images/profile.png");
+      : step === 3
+      ? require("../assets/images/profile.png") : require("../assets/images/login.png");
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: "#fff" }}
       behavior={Platform.OS === "ios" ? "padding" : "padding"}
       keyboardVerticalOffset={Platform.OS === "ios" ? 90 : -10}
     >
+      <FirebaseRecaptchaVerifierModal
+        ref={recaptchaVerifier}
+        firebaseConfig={auth.app.options}
+        attemptInvisibleVerification={true}
+      />
       <SafeAreaView style={{ flex: 1 }}>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <ScrollView
@@ -123,7 +188,11 @@ const LoginScreen = () => {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.container}>
-              <Text style={styles.title}>SOULCONNECT...</Text>
+              <Text style={styles.title}>S<View style={styles.iconRight}>
+                        <BlinkingHeart />
+                      </View>ULC<View style={styles.iconRight}>
+                        <BlinkingHeart />
+                      </View>NNECT...</Text>
               <Image
                 source={imageSource}
                 style={styles.image}
@@ -222,10 +291,7 @@ const LoginScreen = () => {
                 <Formik
                   initialValues={{ name: "", age: "", gender: "" }}
                   validationSchema={validationSchema}
-                  onSubmit={(values) => {
-                    console.log("Submitted Profile:", values);
-                    router.push("/UsersChatList");
-                  }}
+                  onSubmit={handleSubmitProfile}
                 >
                   {({
                     handleChange,
@@ -337,11 +403,17 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#333",
+    fontSize: 42,
+    fontWeight: "500",
+    fontFamily: "sans-serif",
+    fontStyle: "italic",
+    color: "#FF1493",
     marginBottom: 30,
     textAlign: "center",
+    textShadowColor: 'rgba(255, 20, 147, 0.3)',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
+    letterSpacing: 3,
   },
   stepContainer: {
     width: "100%",

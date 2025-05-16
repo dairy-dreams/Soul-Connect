@@ -1,35 +1,3 @@
-// import { initializeApp, getApps, getApp } from 'firebase/app';
-// import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
-// import { getFirestore } from 'firebase/firestore';
-// import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
-
-
-
-// let app;
-// let auth;
-// let db;
-
-// try {
-//   if (!getApps().length) {
-//     app = initializeApp(firebaseConfig);
-//   } else {
-//     app = getApp();
-//   }
-
-//   try {
-//     auth = initializeAuth(app, {
-//       persistence: getReactNativePersistence(ReactNativeAsyncStorage)
-//     });
-//   } catch (authError) {
-//     console.error("Auth initialization error:", authError);
-//   }
-//   db = getFirestore(app);
-// } catch (error) {
-//   console.error("Firebase initialization error:", error);
-// }
-
-// export { app, auth, db };
-
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
